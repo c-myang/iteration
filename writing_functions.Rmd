@@ -8,7 +8,113 @@ date: "2022-10-27"
 library(tidyverse)
 library(rvest)
 knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+set.seed(1)
+
 ```
 
 ## My first function
 
+Let's compute the Z-score version of a list of numbers! 
+
+```{r}
+x_vec = rnorm(25, mean = 7, sd = 4)
+(x_vec - mean(x_vec)) / sd(x_vec)
+```
+
+Suppose you want to do this often.
+
+```{r}
+z_scores = function(x) {
+  if (!is.numeric(x)) {
+    stop("Z scores only work for numbers")
+  }
+  
+  if (length(x) < 3) {
+    stop("Z scores really only work if you have three or more numbers")
+  }
+  
+  z = (x - mean(x)) / sd(x)
+  z #or return(z)
+}
+```
+Now we have a `z_scores` function!
+
+```{r}
+z_scores(x_vec)
+
+z_scores(x = 1:10)
+z_scores(x = rbinom(100, 1, 0.6))
+#z_scores(x = 3) #Can't take the sd() of 3, so returns NA
+#z_scores(x = "My name is Cathy") #Can't take the sd() or mean() of characters
+```
+
+
+## Let's have multiple outputs
+
+Let's just get the mean and sd from the vector input.
+
+```{r}
+mean_and_sd = function(x) {
+  
+  if (!is.numeric(x)) {
+    stop("Argument x should be numeric")
+  } else if (length(x) == 1) {
+    stop("Cannot be computed for length 1 vectors")
+  }
+  
+  mean_x = mean(x)
+  sd_x = sd(x)
+  
+  tibble(mean = mean_x, 
+       sd = sd_x)
+}
+```
+
+```{r}
+mean_and_sd(x_vec)
+```
+
+```{r}
+mean_and_sd(x_vec)
+
+mean_and_sd(x = 1:10)
+mean_and_sd(x = rbinom(100, 1, 0.6))
+#mean_and_sd(x = 3) 
+#mean_and_sd(x = "My name is Cathy") 
+```
+
+## Simulations
+
+When we compute the mean and sd each time, we are getting different values each time.
+
+
+```{r}
+x_vec = rnorm(n = 25000, mean = 7, sd = 4)
+
+tibble(
+  mean = mean(x_vec), 
+  sd = sd(x_vec)
+)
+```
+
+Can I do this using a function? YUP
+
+```{r}
+sim_mean_sd = function(n_obs, true_mean = 7, true_sd = 4) {
+  
+  x = rnorm(n = n_obs, mean = true_mean, sd = true_sd)
+
+tibble(
+  mean = mean(x), 
+  sd = sd(x)
+)
+}
+```
+
+Does it work??
+
+```{r}
+sim_mean_sd(n_obs = 25)
+```
+
+We can see when running the function, we are getting a tibble that outputs the true mean and sd each time. When we don't set `true_mean` and `true_sd`, it defaults to the values we set of 7 and 4. If you don't name the arguments of the function, it will assume you are putting in order of the arguments of the function.
