@@ -191,3 +191,213 @@ outputs the true mean and sd each time. When we don’t set `true_mean`
 and `true_sd`, it defaults to the values we set of 7 and 4. If you don’t
 name the arguments of the function, it will assume you are putting in
 order of the arguments of the function.
+
+## Fixing bad stuff
+
+In reading data from the web, we wrote code that allowed us to scrape
+information in Amazon reviews. That code is below.
+
+``` r
+url = "https://www.amazon.com/product-reviews/B00005JNBQ/ref=cm_cr_arp_d_viewopt_rvwer?ie=UTF8&reviewerType=avp_only_reviews&sortBy=recent&pageNumber=1"
+
+dynamite_html = read_html(url)
+
+review_titles = 
+  dynamite_html %>%
+  html_nodes(".a-text-bold span") %>%
+  html_text()
+
+review_stars = 
+  dynamite_html %>%
+  html_nodes("#cm_cr-review_list .review-rating") %>%
+  html_text() %>%
+  str_extract("^\\d") %>%
+  as.numeric()
+
+review_text = 
+  dynamite_html %>%
+  html_nodes(".review-text-content span") %>%
+  html_text() %>% 
+  str_replace_all("\n", "") %>% 
+  str_trim()
+
+reviews = tibble(
+  title = review_titles,
+  stars = review_stars,
+  text = review_text
+)
+```
+
+Let’s write a quick function to scrape review information for any URL to
+an Amazon review page.
+
+``` r
+read_page_reviews = function(url) {
+  
+  html = read_html(url)
+  
+  review_titles = 
+    html %>%
+    html_nodes(".a-text-bold span") %>%
+    html_text()
+  
+  review_stars = 
+    html %>%
+    html_nodes("#cm_cr-review_list .review-rating") %>%
+    html_text() %>%
+    str_extract("^\\d") %>%
+    as.numeric()
+  
+  review_text = 
+    html %>%
+    html_nodes(".review-text-content span") %>%
+    html_text() %>% 
+    str_replace_all("\n", "") %>% 
+    str_trim() %>% 
+    str_subset("The media could not be loaded.", negate = TRUE) %>% 
+    str_subset("^$", negate = TRUE)
+  
+  tibble(
+    title = review_titles,
+    stars = review_stars,
+    text = review_text
+  )
+}
+```
+
+Let’s try with a URL.
+
+``` r
+url = "https://www.amazon.com/product-reviews/B00005JNBQ/ref=cm_cr_arp_d_viewopt_rvwer?ie=UTF8&reviewerType=avp_only_reviews&sortBy=recent&pageNumber=4"
+
+read_page_reviews(url)
+```
+
+    ## # A tibble: 10 × 3
+    ##    title                                    stars text                          
+    ##    <chr>                                    <dbl> <chr>                         
+    ##  1 Gosh!                                        5 "Ever wonder if chickens have…
+    ##  2 An Acquired Taste                            1 "This is one of those \"I get…
+    ##  3 What is this ?                               4 "Nice movie for family night …
+    ##  4 Napoleon Dynamite                            2 "I was not impressed by this …
+    ##  5 Great movie                                  5 "Great movie"                 
+    ##  6 Good movie                                   5 "Good movie"                  
+    ##  7 Came as Described                            5 "Came as Described"           
+    ##  8 Oddly on my list of keepers.                 5 "Good movie. Underrated but q…
+    ##  9 Low budget fun                               5 "Oddball characters doing qui…
+    ## 10 On a scale of 1 to 10 this rates a minus     1 "This movie is hands down the…
+
+What good does this do? We’ll use this to read in reviews from a few
+pages and combine the results.
+
+``` r
+url_base = "https://www.amazon.com/product-reviews/B00005JNBQ/ref=cm_cr_arp_d_viewopt_rvwer?ie=UTF8&reviewerType=avp_only_reviews&sortBy=recent&pageNumber="
+
+vec_urls = str_c(url_base, 1:5)
+
+dynamite_reviews = bind_rows(
+  read_page_reviews(vec_urls[1]),
+  read_page_reviews(vec_urls[2]),
+  read_page_reviews(vec_urls[3]),
+  read_page_reviews(vec_urls[4]),
+  read_page_reviews(vec_urls[5])
+)
+
+dynamite_reviews
+```
+
+    ## # A tibble: 50 × 3
+    ##    title                                stars text                              
+    ##    <chr>                                <dbl> <chr>                             
+    ##  1 70’s and 80’s Schtick Comedy             5 …especially funny if you have eve…
+    ##  2 Amazon Censorship                        5 I hope Amazon does not censor my …
+    ##  3 Watch to say you did                     3 I know it's supposed to be a cult…
+    ##  4 Best Movie Ever!                         5 We just love this movie and even …
+    ##  5 Quirky                                   5 Good family film                  
+    ##  6 Funny movie - can't play it !            1 Sony 4k player won't even recogni…
+    ##  7 A brilliant story about teenage life     5 Napoleon Dynamite delivers dry hu…
+    ##  8 HUHYAH                                   5 Spicy                             
+    ##  9 Cult Classic                             4 Takes a time or two to fully appr…
+    ## 10 Sweet                                    5 Timeless Movie. My Grandkids are …
+    ## # … with 40 more rows
+
+## Loading LoTR data
+
+In tidy data, we broke the “only copy code twice” rule when we used the
+code below to process the LoTR words data:
+
+``` r
+fellowship_ring = readxl::read_excel("./data/LotR_Words.xlsx", range = "B3:D6") %>%
+  mutate(movie = "fellowship_ring")
+
+two_towers = readxl::read_excel("./data/LotR_Words.xlsx", range = "F3:H6") %>%
+  mutate(movie = "two_towers")
+
+return_king = readxl::read_excel("./data/LotR_Words.xlsx", range = "J3:L6") %>%
+  mutate(movie = "return_king")
+
+lotr_tidy = bind_rows(fellowship_ring, two_towers, return_king) %>%
+  janitor::clean_names() %>%
+  gather(key = sex, value = words, female:male) %>%
+  mutate(race = str_to_lower(race)) %>% 
+  select(movie, everything()) 
+```
+
+The function below will read in and clean LoTR data – it differs from
+the previous code by including some data tidying steps in the function
+rather than after data have been combined, but produces the same result.
+
+``` r
+lotr_load_and_tidy = function(path, range, movie_name) {
+  
+  df = readxl::read_excel(path, range = range) %>%
+    janitor::clean_names() %>%
+    gather(key = sex, value = words, female:male) %>%
+    mutate(race = str_to_lower(race),
+           movie = movie_name)
+  
+  df
+  
+}
+
+lotr_tidy = 
+  bind_rows(
+    lotr_load_and_tidy("./data/LotR_Words.xlsx", "B3:D6", "fellowship_ring"),
+    lotr_load_and_tidy("./data/LotR_Words.xlsx", "F3:H6", "two_towers"),
+    lotr_load_and_tidy("./data/LotR_Words.xlsx", "J3:L6", "return_king")) %>%
+  select(movie, everything()) 
+```
+
+## Functions as arguments
+
+One powerful tool is the ability to pass functions as arguments into
+functions. This might seem like a weird thing to do, but it has a lot of
+handy applications – we’ll see just how far it goes in the next modules
+in this topic.
+
+Do NOT use variable names you created in your function outside your
+function!
+
+``` r
+x_vec = rnorm(25, 0, 1)
+
+my_summary = function(x, summ_func) {
+  summ_func(x)
+}
+
+my_summary(x_vec, sd)
+```
+
+    ## [1] 1.089694
+
+``` r
+my_summary(x_vec, IQR)
+```
+
+    ## [1] 1.455819
+
+``` r
+my_summary(x_vec, var)
+```
+
+    ## [1] 1.187433
