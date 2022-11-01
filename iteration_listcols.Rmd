@@ -94,6 +94,14 @@ mean_and_sd(list_norms[[3]])
 This is not very concise. Let's try a `for` loop instead!
 
 ```{r}
+output = vector("list", length = 4)
+# output[[1]] = mean_and_sd(list_norms[[1]])
 
+for (i in 1:4) {
+  output[[i]] = mean_and_sd(list_norms[[i]])
+}
+
+
+output
 ```
 

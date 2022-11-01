@@ -144,3 +144,39 @@ mean_and_sd(list_norms[[3]])
     ## 1  17.1 0.381
 
 This is not very concise. Let’s try a `for` loop instead!
+
+``` r
+output = vector("list", length = 4)
+# output[[1]] = mean_and_sd(list_norms[[1]])
+
+for (i in 1:4) {
+  output[[i]] = mean_and_sd(list_norms[[i]])
+}
+
+
+output
+```
+
+    ## [[1]]
+    ## # A tibble: 1 × 2
+    ##    mean    sd
+    ##   <dbl> <dbl>
+    ## 1  3.80  4.48
+    ## 
+    ## [[2]]
+    ## # A tibble: 1 × 2
+    ##    mean    sd
+    ##   <dbl> <dbl>
+    ## 1 -11.8  2.45
+    ## 
+    ## [[3]]
+    ## # A tibble: 1 × 2
+    ##    mean    sd
+    ##   <dbl> <dbl>
+    ## 1  17.1 0.381
+    ## 
+    ## [[4]]
+    ## # A tibble: 1 × 2
+    ##    mean    sd
+    ##   <dbl> <dbl>
+    ## 1  99.6  1.18
