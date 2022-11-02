@@ -193,3 +193,88 @@ listcol_df = listcol_df %>%
 ```
 
 This is fantastic! In this df, we have the name, sample list we started with, and the result stored as a list (of tibbles). We don't lose information.
+
+## Nested data
+
+Let's look at weather data
+
+### Weather data
+
+```{r}
+weather_df = 
+  rnoaa::meteo_pull_monitors(
+    c("USW00094728", "USC00519397", "USS0023B17S"),
+    var = c("PRCP", "TMIN", "TMAX"), 
+    date_min = "2017-01-01",
+    date_max = "2017-12-31") %>%
+  mutate(
+    name = recode(
+      id, 
+      USW00094728 = "CentralPark_NY", 
+      USC00519397 = "Waikiki_HA",
+      USS0023B17S = "Waterhole_WA"),
+    tmin = tmin / 10,
+    tmax = tmax / 10) %>%
+  select(name, id, everything())
+```
+
+Get our list columns. We want to nest anything from `date:tmin` inside each weather station location.
+
+```{r}
+weather_nest = 
+  weather_df %>% 
+  nest(data = date:tmin)
+```
+
+```{r}
+weather_nest %>% pull(name)
+weather_nest %>% pull(data)
+
+weather_nest$data[[1]] # Gives us a tibble for Central Park
+```
+
+Supposed I want to regress `tmax` on `tmin` for each station. Can I do it for each of the datasets separately and store its results?
+
+```{r}
+lm(tmax ~ tmin, weather_nest$data[[1]])
+lm(tmax ~ tmin, weather_nest$data[[2]])
+
+```
+
+This works...let's write a function to spit out the `lm` results for any given dataframe! 
+
+What if we wanted `weather_lm(weather_nest$data[[1]]), weather_lm(weather_nest$data[[2]])`, etc.?
+
+```{r}
+weather_lm = function(df) {
+  
+  lm(tmax ~ tmin, data = df)
+}
+
+output = vector("list", 3)
+
+for (i in 1:3) {
+  
+  output[[i]] = weather_lm(weather_nest$data[[i]])
+  
+}
+```
+
+What about a Map?
+
+```{r}
+map(weather_nest$data, weather_lm)
+```
+
+What about a map in a list column?! (adding results in a column in `weather_nest` df)
+
+```{r}
+weather_nest = weather_nest %>% 
+  mutate(
+    models = map(data, weather_lm)
+  )
+
+weather_nest
+```
+
+Now we know that we can fit a separate linear model for each weather station and save the results in the `models` column!

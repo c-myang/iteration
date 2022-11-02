@@ -412,3 +412,219 @@ listcol_df = listcol_df %>%
 This is fantastic! In this df, we have the name, sample list we started
 with, and the result stored as a list (of tibbles). We don’t lose
 information.
+
+## Nested data
+
+Let’s look at weather data
+
+### Weather data
+
+``` r
+weather_df = 
+  rnoaa::meteo_pull_monitors(
+    c("USW00094728", "USC00519397", "USS0023B17S"),
+    var = c("PRCP", "TMIN", "TMAX"), 
+    date_min = "2017-01-01",
+    date_max = "2017-12-31") %>%
+  mutate(
+    name = recode(
+      id, 
+      USW00094728 = "CentralPark_NY", 
+      USC00519397 = "Waikiki_HA",
+      USS0023B17S = "Waterhole_WA"),
+    tmin = tmin / 10,
+    tmax = tmax / 10) %>%
+  select(name, id, everything())
+```
+
+Get our list columns. We want to nest anything from `date:tmin` inside
+each weather station location.
+
+``` r
+weather_nest = 
+  weather_df %>% 
+  nest(data = date:tmin)
+```
+
+``` r
+weather_nest %>% pull(name)
+```
+
+    ## [1] "CentralPark_NY" "Waikiki_HA"     "Waterhole_WA"
+
+``` r
+weather_nest %>% pull(data)
+```
+
+    ## [[1]]
+    ## # A tibble: 365 × 4
+    ##    date        prcp  tmax  tmin
+    ##    <date>     <dbl> <dbl> <dbl>
+    ##  1 2017-01-01     0   8.9   4.4
+    ##  2 2017-01-02    53   5     2.8
+    ##  3 2017-01-03   147   6.1   3.9
+    ##  4 2017-01-04     0  11.1   1.1
+    ##  5 2017-01-05     0   1.1  -2.7
+    ##  6 2017-01-06    13   0.6  -3.8
+    ##  7 2017-01-07    81  -3.2  -6.6
+    ##  8 2017-01-08     0  -3.8  -8.8
+    ##  9 2017-01-09     0  -4.9  -9.9
+    ## 10 2017-01-10     0   7.8  -6  
+    ## # … with 355 more rows
+    ## 
+    ## [[2]]
+    ## # A tibble: 365 × 4
+    ##    date        prcp  tmax  tmin
+    ##    <date>     <dbl> <dbl> <dbl>
+    ##  1 2017-01-01     0  26.7  16.7
+    ##  2 2017-01-02     0  27.2  16.7
+    ##  3 2017-01-03     0  27.8  17.2
+    ##  4 2017-01-04     0  27.2  16.7
+    ##  5 2017-01-05     0  27.8  16.7
+    ##  6 2017-01-06     0  27.2  16.7
+    ##  7 2017-01-07     0  27.2  16.7
+    ##  8 2017-01-08     0  25.6  15  
+    ##  9 2017-01-09     0  27.2  15.6
+    ## 10 2017-01-10     0  28.3  17.2
+    ## # … with 355 more rows
+    ## 
+    ## [[3]]
+    ## # A tibble: 365 × 4
+    ##    date        prcp  tmax  tmin
+    ##    <date>     <dbl> <dbl> <dbl>
+    ##  1 2017-01-01   432  -6.8 -10.7
+    ##  2 2017-01-02    25 -10.5 -12.4
+    ##  3 2017-01-03     0  -8.9 -15.9
+    ##  4 2017-01-04     0  -9.9 -15.5
+    ##  5 2017-01-05     0  -5.9 -14.2
+    ##  6 2017-01-06     0  -4.4 -11.3
+    ##  7 2017-01-07    51   0.6 -11.5
+    ##  8 2017-01-08    76   2.3  -1.2
+    ##  9 2017-01-09    51  -1.2  -7  
+    ## 10 2017-01-10     0  -5   -14.2
+    ## # … with 355 more rows
+
+``` r
+weather_nest$data[[1]] # Gives us a tibble for Central Park
+```
+
+    ## # A tibble: 365 × 4
+    ##    date        prcp  tmax  tmin
+    ##    <date>     <dbl> <dbl> <dbl>
+    ##  1 2017-01-01     0   8.9   4.4
+    ##  2 2017-01-02    53   5     2.8
+    ##  3 2017-01-03   147   6.1   3.9
+    ##  4 2017-01-04     0  11.1   1.1
+    ##  5 2017-01-05     0   1.1  -2.7
+    ##  6 2017-01-06    13   0.6  -3.8
+    ##  7 2017-01-07    81  -3.2  -6.6
+    ##  8 2017-01-08     0  -3.8  -8.8
+    ##  9 2017-01-09     0  -4.9  -9.9
+    ## 10 2017-01-10     0   7.8  -6  
+    ## # … with 355 more rows
+
+Supposed I want to regress `tmax` on `tmin` for each station. Can I do
+it for each of the datasets separately and store its results?
+
+``` r
+lm(tmax ~ tmin, weather_nest$data[[1]])
+```
+
+    ## 
+    ## Call:
+    ## lm(formula = tmax ~ tmin, data = weather_nest$data[[1]])
+    ## 
+    ## Coefficients:
+    ## (Intercept)         tmin  
+    ##       7.209        1.039
+
+``` r
+lm(tmax ~ tmin, weather_nest$data[[2]])
+```
+
+    ## 
+    ## Call:
+    ## lm(formula = tmax ~ tmin, data = weather_nest$data[[2]])
+    ## 
+    ## Coefficients:
+    ## (Intercept)         tmin  
+    ##     20.0966       0.4509
+
+This works…let’s write a function to spit out the `lm` results for any
+given dataframe!
+
+What if we wanted
+`weather_lm(weather_nest$data[[1]]), weather_lm(weather_nest$data[[2]])`,
+etc.?
+
+``` r
+weather_lm = function(df) {
+  
+  lm(tmax ~ tmin, data = df)
+}
+
+output = vector("list", 3)
+
+for (i in 1:3) {
+  
+  output[[i]] = weather_lm(weather_nest$data[[i]])
+  
+}
+```
+
+What about a Map?
+
+``` r
+map(weather_nest$data, weather_lm)
+```
+
+    ## [[1]]
+    ## 
+    ## Call:
+    ## lm(formula = tmax ~ tmin, data = df)
+    ## 
+    ## Coefficients:
+    ## (Intercept)         tmin  
+    ##       7.209        1.039  
+    ## 
+    ## 
+    ## [[2]]
+    ## 
+    ## Call:
+    ## lm(formula = tmax ~ tmin, data = df)
+    ## 
+    ## Coefficients:
+    ## (Intercept)         tmin  
+    ##     20.0966       0.4509  
+    ## 
+    ## 
+    ## [[3]]
+    ## 
+    ## Call:
+    ## lm(formula = tmax ~ tmin, data = df)
+    ## 
+    ## Coefficients:
+    ## (Intercept)         tmin  
+    ##       7.499        1.221
+
+What about a map in a list column?! (adding results in a column in
+`weather_nest` df)
+
+``` r
+weather_nest = weather_nest %>% 
+  mutate(
+    models = map(data, weather_lm)
+  )
+
+weather_nest
+```
+
+    ## # A tibble: 3 × 4
+    ##   name           id          data               models
+    ##   <chr>          <chr>       <list>             <list>
+    ## 1 CentralPark_NY USW00094728 <tibble [365 × 4]> <lm>  
+    ## 2 Waikiki_HA     USC00519397 <tibble [365 × 4]> <lm>  
+    ## 3 Waterhole_WA   USS0023B17S <tibble [365 × 4]> <lm>
+
+Now we know that we can fit a separate linear model for each weather
+station and save the results in the `models` column!
