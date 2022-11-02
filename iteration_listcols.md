@@ -114,7 +114,8 @@ mean_and_sd = function(x) {
 }
 ```
 
-Let’s try to make this work:
+I can apply that function to each list element. Let’s try to make this
+work:
 
 ``` r
 mean_and_sd(list_norms[[1]])
@@ -143,16 +144,27 @@ mean_and_sd(list_norms[[3]])
     ##   <dbl> <dbl>
     ## 1  17.1 0.381
 
+``` r
+mean_and_sd(list_norms[[4]])
+```
+
+    ## # A tibble: 1 × 2
+    ##    mean    sd
+    ##   <dbl> <dbl>
+    ## 1  99.6  1.18
+
 This is not very concise. Let’s try a `for` loop instead!
+
+We will create a vector of class “list” with a length of 4. We want to
+output the mean and sd of each element in `list_norms`, such that we
+want `output[[1]] = mean_and_sd(list_norms[[1]])` from 1 to 4.
 
 ``` r
 output = vector("list", length = 4)
-# output[[1]] = mean_and_sd(list_norms[[1]])
 
 for (i in 1:4) {
   output[[i]] = mean_and_sd(list_norms[[i]])
 }
-
 
 output
 ```
@@ -180,3 +192,101 @@ output
     ##    mean    sd
     ##   <dbl> <dbl>
     ## 1  99.6  1.18
+
+# Let’s try map!
+
+Map applies the `mean_and_sd` function onto `list_norms` –\> same output
+as running the for loop. It also applies names to each output.
+
+``` r
+map(list_norms, mean_and_sd)
+```
+
+    ## $a
+    ## # A tibble: 1 × 2
+    ##    mean    sd
+    ##   <dbl> <dbl>
+    ## 1  3.80  4.48
+    ## 
+    ## $b
+    ## # A tibble: 1 × 2
+    ##    mean    sd
+    ##   <dbl> <dbl>
+    ## 1 -11.8  2.45
+    ## 
+    ## $c
+    ## # A tibble: 1 × 2
+    ##    mean    sd
+    ##   <dbl> <dbl>
+    ## 1  17.1 0.381
+    ## 
+    ## $d
+    ## # A tibble: 1 × 2
+    ##    mean    sd
+    ##   <dbl> <dbl>
+    ## 1  99.6  1.18
+
+What if you want a different function…? We can “map” across `list_norms`
+any function!
+
+``` r
+output = map(list_norms, median)
+output
+```
+
+    ## $a
+    ## [1] 3.485503
+    ## 
+    ## $b
+    ## [1] -11.56734
+    ## 
+    ## $c
+    ## [1] 17.10033
+    ## 
+    ## $d
+    ## [1] 99.47834
+
+``` r
+output = map(list_norms, IQR)
+output
+```
+
+    ## $a
+    ## [1] 6.937857
+    ## 
+    ## $b
+    ## [1] 3.594308
+    ## 
+    ## $c
+    ## [1] 0.4435161
+    ## 
+    ## $d
+    ## [1] 1.789004
+
+Map variants… What if we don’t want our output to be a “list”?
+
+``` r
+output = map_dbl(list_norms, median)
+output
+```
+
+    ##          a          b          c          d 
+    ##   3.485503 -11.567340  17.100328  99.478335
+
+More complicated… We can’t apply dbl to mean_and_sd because the function
+gives two numbers. However, we can output a dataframe!
+
+``` r
+output = map_df(list_norms, mean_and_sd, .id = "input")
+output
+```
+
+    ## # A tibble: 4 × 3
+    ##   input   mean    sd
+    ##   <chr>  <dbl> <dbl>
+    ## 1 a       3.80 4.48 
+    ## 2 b     -11.8  2.45 
+    ## 3 c      17.1  0.381
+    ## 4 d      99.6  1.18
+
+We keep track of the id under the “input” column.

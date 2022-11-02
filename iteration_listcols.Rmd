@@ -84,24 +84,65 @@ mean_and_sd = function(x) {
 }
 ```
 
-Let's try to make this work:
+I can apply that function to each list element. Let's try to make this work:
 
 ```{r}
 mean_and_sd(list_norms[[1]])
 mean_and_sd(list_norms[[2]])
 mean_and_sd(list_norms[[3]])
+mean_and_sd(list_norms[[4]])
 ```
 This is not very concise. Let's try a `for` loop instead!
 
+We will create a vector of class "list" with a length of 4. We want to output the mean and sd of each element in `list_norms`, such that we want `output[[1]] = mean_and_sd(list_norms[[1]])` from 1 to 4.
+
 ```{r}
 output = vector("list", length = 4)
-# output[[1]] = mean_and_sd(list_norms[[1]])
 
 for (i in 1:4) {
   output[[i]] = mean_and_sd(list_norms[[i]])
 }
 
-
 output
 ```
+
+# Let's try map!
+
+Map applies the `mean_and_sd` function onto `list_norms` --> same output as running the for loop.
+It also applies names to each output.
+
+```{r}
+map(list_norms, mean_and_sd)
+```
+
+What if you want a different function...? We can "map" across `list_norms` any function!
+
+```{r}
+output = map(list_norms, median)
+output
+
+output = map(list_norms, IQR)
+output
+```
+
+Map variants...
+What if we don't want our output to be a "list"?
+
+```{r}
+output = map_dbl(list_norms, median)
+output
+
+```
+
+More complicated...
+We can't apply dbl to mean_and_sd because the function gives two numbers. However, we can output a dataframe!
+
+```{r}
+output = map_df(list_norms, mean_and_sd, .id = "input")
+output
+
+```
+
+We keep track of the id under the "input" column.
+
 
