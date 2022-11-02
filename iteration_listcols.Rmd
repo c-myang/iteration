@@ -145,4 +145,51 @@ output
 
 We keep track of the id under the "input" column.
 
+## List columns!
 
+```{r}
+listcol_df = 
+  tibble(
+    name = c("a", "b", "c", "d"), 
+    samp = list_norms
+  )
+```
+
+When we print this, we get a weird output. Under "samp", we get have a named list, which is a collection of doubles of length 20.
+
+```{r}
+listcol_df %>% pull(name)
+listcol_df %>% pull(samp)
+
+listcol_df %>% 
+  filter(name == "a")
+```
+
+listcol_df has everything we have.
+
+Let's try some operations.
+
+```{r}
+listcol_df$samp[[1]] # Gives us first element of 'samp' list column
+mean_and_sd(listcol_df$samp[[2]])
+
+```
+
+Can I just...map? We will apply `mean_and_sd` to each element of the `samp` list column within the `listcol` dataframe.
+
+```{r}
+map(listcol_df$samp, mean_and_sd)
+```
+
+So...can I add a list column to our existing `listcol_df`? Use `mutate`!!
+
+```{r}
+listcol_df = listcol_df %>% 
+  mutate(
+    summary = map(samp, mean_and_sd),
+    medians = map_dbl(samp, median)
+  )
+
+```
+
+This is fantastic! In this df, we have the name, sample list we started with, and the result stored as a list (of tibbles). We don't lose information.
