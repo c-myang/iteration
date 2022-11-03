@@ -103,3 +103,83 @@ sim_results_df %>%
 ```
 
 ![](simulation_files/figure-gfm/unnamed-chunk-5-1.png)<!-- -->
+
+What if we changed the sample sizes, and simulated 1000 times?
+
+``` r
+sim_results_df = expand_grid(
+    sample_size = c(30, 60, 120, 240), 
+    iteration = 1:1000
+  ) %>% 
+    mutate(
+      estimate_df = map(sample_size, sim_mean_sd)
+    ) %>% 
+    unnest(estimate_df)
+```
+
+``` r
+sim_results_df %>% 
+  mutate(sample_size = str_c("N = ", sample_size), 
+         sample_size = fct_inorder(sample_size)) %>% 
+  ggplot(aes(x = sample_size, y = mu_hat)) +
+  geom_violin()
+```
+
+![](simulation_files/figure-gfm/unnamed-chunk-7-1.png)<!-- -->
+
+As we expect, our distribution is much wider with a larger sample size
+and more spread out with a narrower sample size
+
+``` r
+sim_results_df %>% 
+  mutate(sample_size = str_c("N = ", sample_size), 
+         sample_size = fct_inorder(sample_size)) %>% 
+  group_by(sample_size) %>% 
+  summarise(emp_st_err = sd(mu_hat))
+```
+
+    ## # A tibble: 4 × 2
+    ##   sample_size emp_st_err
+    ##   <fct>            <dbl>
+    ## 1 N = 30           0.698
+    ## 2 N = 60           0.524
+    ## 3 N = 120          0.374
+    ## 4 N = 240          0.265
+
+``` r
+4 / sqrt(120) # This is close to what we got in our df
+```
+
+    ## [1] 0.3651484
+
+## Let’s see two inputs…
+
+Let’s try varying two simulation parameters
+
+``` r
+sim_results_df = expand_grid(
+  sample_size = c(30, 60, 120, 240), 
+  true_sigma = c(6, 3),
+  iteration = 1:1000
+  ) %>% 
+  mutate(
+     estimate_df = map2(.x = sample_size, .y = true_sigma, ~sim_mean_sd(n_obs = .x, sigma = .y))
+  ) %>% 
+  unnest(estimate_df)
+```
+
+``` r
+sim_results_df %>% 
+  mutate(sample_size = str_c("N = ", sample_size), 
+         sample_size = fct_inorder(sample_size)) %>% 
+  ggplot(aes(x = sample_size, y = mu_hat)) + 
+  geom_violin() + 
+  facet_grid(. ~ true_sigma)
+```
+
+![](simulation_files/figure-gfm/unnamed-chunk-10-1.png)<!-- -->
+
+Note knitting simulations may take time. `cache = TRUE` saves results
+when you first run it and doesn’t re-run it each time you knit. It
+doesn’t run again unless you change the code chunk. Note this may be an
+issue when your code relies on previous changes.
