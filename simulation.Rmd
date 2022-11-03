@@ -11,4 +11,65 @@ set.seed(1)
 knitr::opts_chunk$set(warning = FALSE, message = FALSE)
 ```
 
-## 
+## Simulations!!
+
+Here's our function from before.
+
+```{r}
+sim_mean_sd = function(n_obs, mu = 7, sigma = 4) {
+  
+  x = rnorm(n = n_obs, mean = mu, sd = sigma)
+
+tibble(
+  mu_hat = mean(x), 
+  sigma_hat = sd(x)
+)
+}
+```
+
+How did we use this before?
+
+```{r}
+sim_mean_sd(n_obs = 30)
+```
+Every time we run this function, we get different estimates. Can we do this 100 times? 1000 times?
+
+How can we use this now...a for loop perhaps?
+We can create a vector with 100 empty spots, and fill these columns with `sim_mean_sd`.
+
+```{r}
+output = vector("list", length = 100)
+
+for (i in 1:100) {
+  output[[i]] = sim_mean_sd(n_obs = 30)
+  
+}
+
+bind_rows(output)
+```
+
+
+Let's use list columns instead! `expand_grid` gives us all possible combinations of sample size = 30 and iteration from 1 to 100. Then, we use `map` to input the results of `sim_mean_sd` into our df.
+
+```{r}
+sim_results_df = 
+  expand_grid(
+    sample_size = 30,
+    iteration = 1:100
+  ) %>% 
+  mutate(
+    estimate_df = map(sample_size, sim_mean_sd)
+  ) %>% 
+  unnest(estimate_df)
+
+sim_results_df
+```
+
+Let's plot some summaries for our simulation results.
+
+```{r}
+sim_results_df %>% 
+  ggplot(aes(x = mu_hat)) + 
+  geom_density()
+```
+
